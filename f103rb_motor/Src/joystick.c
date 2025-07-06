@@ -11,9 +11,7 @@
 static uint16_t adcValue[2];
 static uint8_t joystick_task_flag;
 
-static uint8_t left;
-static uint8_t cent;
-static uint8_t right;
+
 static uint8_t conversion_complete_flag = 0;
 static uint8_t forward_flag = 0;
 
@@ -21,12 +19,14 @@ static uint8_t forward_flag = 0;
 static uint16_t steering_angle_ccr;
 static int16_t steering_angle;
 
-static uint16_t car_direction = 0;
-
+static uint8_t car_direction = 0;
+static uint8_t back_warn = 0; // 1 : Too close 0 : safe
 /*measuring motor_speed*/
 static float car_rpm;
 static float car_speed;
-static uint8_t  edge_count;
+static uint8_t edge_count;
+
+
 
 void joystick_init(void)
 {
@@ -39,6 +39,10 @@ uint16_t * get_adcvalue_ptr(void)
   return adcValue;
 }
 
+uint8_t * get_back_warn_ptr(void)
+{
+  return &back_warn;
+}
 uint8_t* get_joystick_task_flag_ptr()
 {
   return &joystick_task_flag;
@@ -126,12 +130,21 @@ void joystick_task(void)
 
 
   /*Applying real motor speed using adcValue[1]*/
+  //특정 구간에선 ccr 0
+  //엑셀이 눌린 만큼 ccr 증가 관계 비례식 찾기
+  uint32_t ccr = (uint32_t)(0 + (999 - 0) * (adcValue[1] - 1700) / (2000 - 1700));
 
 
+  if (ccr > 999)
+  {
+    ccr = 999;
+  }
+  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, ccr);
+  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, ccr);
 
   /*send datas through can*/
-  sendMessage(&steering_angle, &car_rpm, &car_speed, &car_direction);
-
+  sendMessage(&steering_angle, &car_rpm, &car_speed, &car_direction, &back_warn);
+  printf("Back warn : %d",back_warn);
 
 }
 
@@ -155,13 +168,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   if(GPIO_Pin == GPIO_PIN_4)
   {
      uint8_t c2_state = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_5);
-     car_direction = (c2_state == 0) ? 1 : 0; // c2 low : forward high : backward
+     car_direction = (c2_state == 1) ? 1 : 0; // c2 low : forward high : backward
      edge_count++;
   }
   if(GPIO_Pin == GPIO_PIN_5)
   {
      uint8_t c1_state = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_4);
-     car_direction = (c1_state == 1) ? 1 : 0; // c1 high : forward low : backward
+     car_direction = (c1_state == 0) ? 1 : 0; // c1 high : forward low : backward
      edge_count++;
   }
 

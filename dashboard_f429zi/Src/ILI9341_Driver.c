@@ -151,7 +151,7 @@ void ILI9341_Init(void)
 
 	//MEMORY ACCESS CONTROL
 	ILI9341_WriteCommand(0x36);
-	ILI9341_WriteData(0x48);
+	//ILI9341_WriteData(0x48);
 
 	//PIXEL FORMAT
 	ILI9341_WriteCommand(0x3A);
@@ -220,7 +220,7 @@ void ILI9341_Init(void)
 	ILI9341_WriteCommand(0x29);
 
 	//STARTING ROTATION
-	ILI9341_SetRotation(SCREEN_VERTICAL_1);
+	ILI9341_SetRotation(SCREEN_HORIZONTAL_1);
 }
 
 

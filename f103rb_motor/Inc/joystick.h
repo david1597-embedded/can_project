@@ -12,6 +12,7 @@
 #include "gpio.h"
 #include "tim.h"
 #include "adc.h"
+#include "com.h"
 #include "steeringservo.h"
 #define STEERING_ADC_CENTER 2000
 #define STEERING_ADC_DEADZONE 200
@@ -46,6 +47,7 @@ void motor_forward(void);
 void motor_backward(void);
 void cal_carspeed(void);
 uint16_t * get_adcvalue_ptr(void);
+uint8_t* get_back_warn_ptr(void);
 uint8_t* get_joystick_task_flag_ptr(void);
 uint8_t* get_conversion_complete_flag_ptr(void);
 

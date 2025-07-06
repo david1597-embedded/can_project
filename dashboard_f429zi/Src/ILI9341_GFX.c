@@ -231,7 +231,104 @@ void ILI9341_DrawText(const char* str, const uint8_t font[], uint16_t X, uint16_
 		str++;
 	}
 }
+// 올바른 선 그리기 함수
+void ILI9341_DrawLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t color) {
+    int dx = abs((int)x1 - (int)x0);
+    int dy = abs((int)y1 - (int)y0);
+    int sx = (x0 < x1) ? 1 : -1;
+    int sy = (y0 < y1) ? 1 : -1;
+    int err = dx - dy;
 
+    int x = x0;
+    int y = y0;
+
+    while (1) {
+        // 수정: 1×1 픽셀 그리기 (0×0이 아닌!)
+        ILI9341_DrawFilledRectangleCoord(x, y, x+2, y+2, color);
+
+        // 끝점에 도달하면 종료
+        if (x == x1 && y == y1) break;
+
+        int e2 = 2 * err;
+        if (e2 > -dy) {
+            err -= dy;
+            x += sx;
+        }
+        if (e2 < dx) {
+            err += dx;
+            y += sy;
+        }
+    }
+}
+void ILI9341_DrawTriangle(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
+{
+    ILI9341_DrawLine(x0, y0, x1, y1, color);
+    ILI9341_DrawLine(x1, y1, x2, y2, color);
+    ILI9341_DrawLine(x2, y2, x0, y0, color);
+}
+
+void ILI9341_DrawFilledTriangle(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
+{
+//    // 먼저 삼각형 윤곽선을 흰색으로 그리기
+//    ILI9341_DrawLine(x0, y0, x1, y1, 0xFFFF); // 흰색
+//    ILI9341_DrawLine(x1, y1, x2, y2, 0xFFFF); // 흰색
+//    ILI9341_DrawLine(x2, y2, x0, y0, 0xFFFF); // 흰색
+    //ILI9341_DrawTriangle(x0, y0, x1, y1, x2, y2, 0xFFFF);
+    // Y 좌표 범위 구하기
+        uint16_t minY = y0;
+        uint16_t maxY = y0;
+        if (y1 < minY) minY = y1;
+        if (y2 < minY) minY = y2;
+        if (y1 > maxY) maxY = y1;
+        if (y2 > maxY) maxY = y2;
+
+        // 각 수평선에 대해 내부 픽셀 찾아서 채우기
+        for (uint16_t y = minY; y <= maxY; y++) {
+            uint16_t leftX = 65535;  // 최대값으로 초기화
+            uint16_t rightX = 0;     // 최소값으로 초기화
+            int found = 0;
+
+            // X 좌표 범위를 좁혀서 검색
+            uint16_t minX = x0;
+            uint16_t maxX = x0;
+            if (x1 < minX) minX = x1;
+            if (x2 < minX) minX = x2;
+            if (x1 > maxX) maxX = x1;
+            if (x2 > maxX) maxX = x2;
+
+            // 현재 y 라인에서 삼각형 내부 픽셀 찾기
+            for (uint16_t x = minX; x <= maxX; x++) {
+                // 점이 삼각형 내부에 있는지 확인 (외적 사용)
+                int32_t d1 = (x - x0) * (y1 - y0) - (y - y0) * (x1 - x0);
+                int32_t d2 = (x - x1) * (y2 - y1) - (y - y1) * (x2 - x1);
+                int32_t d3 = (x - x2) * (y0 - y2) - (y - y2) * (x0 - x2);
+
+                int has_neg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+                int has_pos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+
+                int inside = !(has_neg && has_pos);
+
+                if (inside) {
+                    if (found == 0) {
+                        leftX = x;
+                        rightX = x;
+                        found = 1;
+                    } else {
+                        if (x < leftX) leftX = x;
+                        if (x > rightX) rightX = x;
+                    }
+                }
+            }
+
+            // 찾은 범위에 색 채우기
+            if (found) {
+                for (uint16_t x = leftX; x <= rightX; x++) {
+                    ILI9341_DrawPixel(x, y, color);
+                }
+            }
+        }
+       // ILI9341_DrawTriangle(x0, y0, x1, y1, x2, y2, color);
+}
 void ILI9341_DrawImage(const uint8_t* image, uint8_t orientation)
 {
 	if(orientation == SCREEN_HORIZONTAL_1)

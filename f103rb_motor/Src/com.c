@@ -22,14 +22,15 @@ void com_init()
 
 }
 
-void sendMessage(int16_t * car_steering_angle, float * car_rpm, float * car_speed, uint16_t * car_direction )
+void sendMessage(int16_t * car_steering_angle, float * car_rpm, float * car_speed, uint8_t * car_direction, uint8_t *back_warn)
 {
-   uint16_t temp_data0 = *car_steering_angle;
+   int16_t temp_data0 = *car_steering_angle;
    uint16_t temp_data1 = (uint16_t)(*car_rpm * 100.0);
    uint16_t temp_data2 = (uint16_t)(*car_speed * 1000.0);
-   uint16_t temp_data3 = *car_direction;
+   uint8_t temp_data3 = *car_direction;
+   uint8_t temp_data4 = *back_warn;
 
-   TxHeader.StdId = 0x123; // Message about controlling motor system
+   TxHeader.StdId = 0x102; // Message about controlling motor system
    TxHeader.ExtId = 0;
    TxHeader.RTR   = CAN_RTR_DATA;
    TxHeader.IDE   = CAN_ID_STD;
@@ -42,8 +43,8 @@ void sendMessage(int16_t * car_steering_angle, float * car_rpm, float * car_spee
    TxData[3] = temp_data1 & 0xFF;
    TxData[4] = (temp_data2 >> 8) & 0xFF;
    TxData[5] = temp_data2 & 0xFF;
-   TxData[6] = (temp_data3 >> 8) * 0xFF;
-   TxData[7] = temp_data3 & 0xFF;
+   TxData[6] = temp_data3;
+   TxData[7] = temp_data4;
 
    TxMailbox = HAL_CAN_GetTxMailboxesFreeLevel(&hcan);
    if(HAL_CAN_AddTxMessage(&hcan, &TxHeader, &TxData[0], &TxMailbox) != HAL_OK)

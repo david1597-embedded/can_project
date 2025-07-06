@@ -18,18 +18,18 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
 #include "can.h"
-#include "dma.h"
-#include "eth.h"
-#include "spi.h"
+#include "tim.h"
 #include "usart.h"
-#include "usb_otg.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "joystick.h"
 #include "com.h"
-#include "LCD.h"
+#include "ultrasonic.h"
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -44,24 +44,38 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
+#ifdef __GNUC__
+/* With GCC small printf (option LD Linker->Libraries->Small printf
+ * set to 'Yes') calls __io_putchar() */
+#define PUTCHAR_PROTOTYPE int  __io_putchar(int ch)
+#else
+#define PUTCHAR_PROTOTYPE int  fputc(int ch, FILE *f)
+#endif /* __GNUC__*/
 
+/** @brief Retargets the C library printf function to the USART.
+ *  @param None
+ *  @retval None
+ */
+PUTCHAR_PROTOTYPE
+{
+  /* Place your implementation of fputc here */
+  /* e.g. write a character to the USART2 and Loop
+     until the end of transmission */
+  if(ch == '\n')
+    HAL_UART_Transmit(&huart2, (uint8_t*) "\r", 1, 0xFFFF);
+    HAL_UART_Transmit(&huart2, (uint8_t*) &ch, 1, 0xFFFF);
+}
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+uint16_t test = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
-int _write(int file, char* p, int len)
-{
-	HAL_UART_Transmit(&huart3, p, len, 10);
-	return len;
-}
 
 /* USER CODE END PFP */
 
@@ -99,14 +113,32 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DMA_Init();
-  MX_ETH_Init();
-  MX_USART3_UART_Init();
-  MX_USB_OTG_FS_PCD_Init();
-  MX_CAN1_Init();
-  MX_SPI1_Init();
   MX_USART2_UART_Init();
+  MX_ADC1_Init();
+  MX_ADC2_Init();
+  MX_TIM1_Init();
+  MX_TIM2_Init();
+  MX_CAN_Init();
+  MX_TIM3_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
+  /* Initializing joystick conversion*/
+  com_init();
+  ultra_module_Init();
+  HAL_TIM_Base_Start_IT(&htim3);
+  HAL_TIM_IC_Start(&htim4, TIM_CHANNEL_1);//Timer for HR-SC04
+  /*Timer for Servo motor*/
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+  /*Timer for motor driver*/
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
+
+
+  motor_forward();
+  //__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 999);
+  //__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 999);
+
+  /*Asynchsronous Variables*/
 
   /* USER CODE END 2 */
 
@@ -114,10 +146,10 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-//     receive_data();
-//     HAL_Delay(50);
-     //ILI9341_Test_Colors();
-    //test();
+    adc_task(ADC_CHANNEL_1);
+    adc_task(ADC_CHANNEL_4);
+    ultra_Trigger(get_ultra_ptr(), TIM_IT_CC1);
+    joystick_task();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -133,23 +165,18 @@ void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-
-  /** Configure the main internal regulator output voltage
-  */
-  __HAL_RCC_PWR_CLK_ENABLE();
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-  RCC_OscInitStruct.HSEState = RCC_HSE_BYPASS;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 4;
-  RCC_OscInitStruct.PLL.PLLN = 168;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
-  RCC_OscInitStruct.PLL.PLLQ = 7;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -161,10 +188,16 @@ void SystemClock_Config(void)
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
+  PeriphClkInit.AdcClockSelection = RCC_ADCPCLK2_DIV6;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
   }
@@ -173,28 +206,6 @@ void SystemClock_Config(void)
 /* USER CODE BEGIN 4 */
 
 /* USER CODE END 4 */
-
-/**
-  * @brief  Period elapsed callback in non blocking mode
-  * @note   This function is called  when TIM1 interrupt took place, inside
-  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
-  * a global variable "uwTick" used as application time base.
-  * @param  htim : TIM handle
-  * @retval None
-  */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-  /* USER CODE BEGIN Callback 0 */
-
-  /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM1)
-  {
-    HAL_IncTick();
-  }
-  /* USER CODE BEGIN Callback 1 */
-
-  /* USER CODE END Callback 1 */
-}
 
 /**
   * @brief  This function is executed in case of error occurrence.
