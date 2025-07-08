@@ -74,4 +74,8 @@ void UpdateSpeed(float speed);
 void Updatewarningcode(uint8_t back_warn);
 //Entire DashBoard Update function
 void UpdateDashboard(float rpm, float speed);
+
+uint8_t *get_update_needle_flag();
+
+
 #endif /* INC_LCD_H_ */

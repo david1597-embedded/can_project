@@ -6,7 +6,6 @@
  */
 
 #include "com.h"
-
 #include <stdio.h>
 #include <string.h>
 static CAN_FilterTypeDef canFilter1;
@@ -114,20 +113,20 @@ void can_error_process()
   }
 
 }
-void receive_data()
-{
-
-     if(HAL_CAN_GetRxFifoFillLevel(&hcan1, CAN_RX_FIFO0) > 0)
-     {
-	  if (HAL_CAN_GetRxMessage(&hcan1, CAN_RX_FIFO0, &canRxHeader, &RxData[0]) == HAL_OK)
-	  {
-	    //printf("CAN Received. \r\n");
-	    printf("CAN RX: ID=0x%03lX DATA=%d %d %d %d %d %d %d %d\n",
-		    canRxHeader.StdId, RxData[0], RxData[1], RxData[2], RxData[3], RxData[4], RxData[5], RxData[6], RxData[7]);
-	    data_process(&RxData[0]);
-	  }
-     }
-}
+//void receive_data()
+//{
+//
+//     if(HAL_CAN_GetRxFifoFillLevel(&hcan1, CAN_RX_FIFO0) > 0)
+//     {
+//	  if (HAL_CAN_GetRxMessage(&hcan1, CAN_RX_FIFO0, &canRxHeader, &RxData[0]) == HAL_OK)
+//	  {
+//	    //printf("CAN Received. \r\n");
+//	    printf("CAN RX: ID=0x%03lX DATA=%d %d %d %d %d %d %d %d\n",
+//		    canRxHeader.StdId, RxData[0], RxData[1], RxData[2], RxData[3], RxData[4], RxData[5], RxData[6], RxData[7]);
+//	    data_process(&RxData[0]);
+//	  }
+//     }
+//}
 float * get_rpm_ptr(void)
 {
   return &car_rpm_tosend;
@@ -157,6 +156,7 @@ void data_process(uint8_t *rxbuffer)
   car_speed_tosend = (float)(car_speed_tosend / 1000.0f);
   printf("ANGLE : %d DIRECTION : %s BACK_WARN : %s \r\n", steering_angle_tosend, car_direction_tosend == 1? "FOWARD" : "BACKWARD", car_back_warn_tosend == 1 ? "TOO CLOSE" : "SAFE");
   printf("RPM : %.2f SPEED : %.2f \r\n", car_rpm_tosend, car_speed_tosend);
+
 }
 
 
@@ -166,14 +166,15 @@ void esp8266_send_data(uint8_t * data)
 }
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
-    HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &canRxHeader, &RxData[0]);
+
+    HAL_CAN_GetRxMessage(&hcan1, CAN_RX_FIFO0, &canRxHeader, &RxData[0]);
     if(canRxHeader.StdId == 0x000)
     {
        return ;
     }
 
-    printf("CAN RX: ID=0x%03lX DATA=%d %d %d %d %d %d %d %d\n",
-    	      canRxHeader.StdId, RxData[0], RxData[1], RxData[2], RxData[3], RxData[4], RxData[5], RxData[6], RxData[7]);
+    //printf("CAN RX: ID=0x%03lX DATA=%d %d %d %d %d %d %d %d\n",
+    	      //canRxHeader.StdId, RxData[0], RxData[1], RxData[2], RxData[3], RxData[4], RxData[5], RxData[6], RxData[7]);
     data_process(&RxData[0]);
 // if (HAL_CAN_GetRxMessage(&hcan1, CAN_RX_FIFO0, &canRxHeader, &RxData[0]) == HAL_OK)
 //    {

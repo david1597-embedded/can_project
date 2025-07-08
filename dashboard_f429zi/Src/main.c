@@ -22,6 +22,7 @@
 #include "dma.h"
 #include "eth.h"
 #include "spi.h"
+#include "tim.h"
 #include "usart.h"
 #include "usb_otg.h"
 #include "gpio.h"
@@ -50,7 +51,14 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+volatile uint8_t lcd_update_flag = 0;
+volatile float cached_rpm = 0.0f;
+volatile float cached_speed = 0.0f;
 
+
+volatile uint8_t warning_update_flag = 0;
+volatile uint8_t cached_back_warn = 0;
+volatile uint8_t blink_toggle_flag = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -106,7 +114,16 @@ int main(void)
   MX_CAN1_Init();
   MX_SPI1_Init();
   MX_USART2_UART_Init();
+  MX_TIM2_Init();
+  MX_TIM3_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
+  com_init();
+  ILI9341_Init();
+  InitDashboard();
+
+  HAL_TIM_Base_Start_IT(&htim2);
+  HAL_TIM_Base_Start_IT(&htim3);
 
   /* USER CODE END 2 */
 
@@ -118,6 +135,29 @@ int main(void)
 //     HAL_Delay(50);
      //ILI9341_Test_Colors();
     //test();
+    if(lcd_update_flag == 1)
+    {
+       // 인터럽트 잠시 비활성화하여 데이터 일관성 확보
+       __disable_irq();
+       float rpm_val = cached_rpm;
+       float speed_val = cached_speed;
+       lcd_update_flag = 0;
+       __enable_irq();
+
+       // 메인 루프에서 LCD 업데이트 수행
+       UpdateDashboard(rpm_val, speed_val);
+    }
+
+    if(warning_update_flag == 1)
+    {
+       __disable_irq();
+       uint8_t warn_val = cached_back_warn;
+       warning_update_flag = 0;
+       __enable_irq();
+
+       Updatewarningcode(warn_val);
+    }
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -172,29 +212,51 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
-/* USER CODE END 4 */
-
-/**
-  * @brief  Period elapsed callback in non blocking mode
-  * @note   This function is called  when TIM1 interrupt took place, inside
-  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
-  * a global variable "uwTick" used as application time base.
-  * @param  htim : TIM handle
-  * @retval None
-  */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-  /* USER CODE BEGIN Callback 0 */
-
-  /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM1)
+  if(htim->Instance == TIM2)
   {
-    HAL_IncTick();
-  }
-  /* USER CODE BEGIN Callback 1 */
+    printf("TIM2 INTERRUPT OCCURRED! \r\n");
 
-  /* USER CODE END Callback 1 */
+    // 포인터에서 현재 값 읽기
+    float* rpm_ptr = get_rpm_ptr();
+    float* speed_ptr = get_speed_ptr();
+
+    // NULL 포인터 체크
+    if(rpm_ptr != NULL && speed_ptr != NULL)
+    {
+	// 캐시된 값 업데이트
+	cached_rpm = *rpm_ptr;
+	cached_speed = *speed_ptr * 100.0f;
+
+	// LCD 업데이트 플래그 설정
+	lcd_update_flag = 1;
+
+	printf("RPM: %.2f, SPEED: %.2f\r\n", cached_rpm, cached_speed);
+    }
+    else
+    {
+	printf("NULL pointer detected!\r\n");
+    }
+  }
+  else if(htim->Instance == TIM3)
+  {
+    printf("TIM3 INTERRUPTE OCCURRED! \r\n");
+    uint8_t* back_warn_ptr = get_back_warn_ptr();
+
+   if(back_warn_ptr != NULL)
+   {
+       cached_back_warn = *back_warn_ptr;
+       warning_update_flag = 1;
+   }
+   else
+   {
+      printf("NULL pointer detected!\r\n");
+   }
+
+  }
 }
+/* USER CODE END 4 */
 
 /**
   * @brief  This function is executed in case of error occurrence.

@@ -6,11 +6,13 @@
  */
 
 #include "LCD.h"
-
+#include "com.h"
 // 바늘 각도 저장용
 static float rpm_last_angle = 225.0;
 static float speed_last_angle = 225.0;
 // 경계 체크 함수
+
+
 
 
 // ========== 왼쪽을 향하는 화살표 (수정된 버전) ==========
@@ -260,33 +262,42 @@ void UpdateSpeed(float speed)
 
 void Updatewarningcode(uint8_t back_warn)
 {
-    static uint8_t blink_toggle_flag = 0;
+  static uint8_t blink_toggle_flag = 0;
+     static uint8_t previous_warn_state = 0xFF;
 
-
-    if(back_warn == 0)
-    {
-      printf("keep dar \r\n");
-      ILI9341_DrawFilledTriangle(10, 192, 26,160, 42,192,COLOR_BLACK);
-    }
-    else if(back_warn == 1)
-    {
-      if(blink_toggle_flag == 0)
-      {
-	ILI9341_DrawFilledTriangle(10, 192, 26,160, 42,192,COLOR_RED);
-	blink_toggle_flag = 1 ;
-      }
-      else if(blink_toggle_flag == 1)
-      {
-	printf("epqreqwrqwt \r\n");
-	ILI9341_DrawFilledTriangle(10, 192, 26,160, 42,192,COLOR_BLACK);
-	blink_toggle_flag = 0 ;
-      }
-    }
-
+     if(back_warn == 0)
+     {
+         // 경고 해제 - 한 번만 그리기
+         if(previous_warn_state != 0)
+         {
+             printf("🔴 WARNING SYSTEM OFF \r\n");
+             ILI9341_DrawFilledTriangle(10, 192, 26, 160, 42, 192, COLOR_BLACK);
+             blink_toggle_flag = 0;
+         }
+         previous_warn_state = 0;
+     }
+     else if(back_warn == 1)
+     {
+         // 경고 활성화 - 명확한 ON/OFF
+         if(blink_toggle_flag == 0)
+         {
+             printf("🚨 WARNING ACTIVE - LIGHT ON \r\n");
+             ILI9341_DrawFilledTriangle(10, 192, 26, 160, 42, 192, COLOR_RED);
+             blink_toggle_flag = 1;
+         }
+         else
+         {
+             printf("🚨 WARNING ACTIVE - LIGHT OFF \r\n");
+             ILI9341_DrawFilledTriangle(10, 192, 26, 160, 42, 192, COLOR_BLACK);
+             blink_toggle_flag = 0;
+         }
+         previous_warn_state = 1;
+     }
 }
 // 대시보드 업데이트
 void UpdateDashboard(float rpm, float speed)
 {
+
   //printf("update dashboard entered \r\n");
     UpdateRPM(rpm);
     UpdateSpeed(speed);
@@ -298,5 +309,4 @@ void dashboard_process()
     //실제 RPM 과 실제 선속도를 받아와서 적용
    //UpdateDashboard(실제 rpm, 실제 선속도
 }
-
 
