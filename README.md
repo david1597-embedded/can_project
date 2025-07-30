@@ -1,4 +1,8 @@
 # 🚗 CAN 통신활용 자동차 정보 수집 프로젝트
+
+블로그를 통해 자세한 내용을 확인하세요!!
+> **프로젝트 링크:** [Velog 블로그 링크] (https://velog.io/@david1597/CAN%ED%86%B5%EC%8B%A0-%EC%9E%90%EB%8F%99%EC%B0%A8-%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B81%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8-%EA%B0%9C%EC%9A%94)
+
 ![Language](https://img.shields.io/badge/Language-C-blue)
 ![Board](https://img.shields.io/badge/MCU-STM32F429ZI-brightgreen)
 ![MCU](https://img.shields.io/badge/MCU-STM32F103RB-yellow)
