@@ -57,3 +57,11 @@
 
 ---
 
+## 📼 시스템 구현 환경
+<img width="761" height="574" alt="image" src="https://github.com/user-attachments/assets/e4458808-cbb4-46e0-828e-3bb2bc98ee33" />
+
+## 📟 ILI9341 대쉬보드
+<img width="331" height="187" alt="image" src="https://github.com/user-attachments/assets/e0d81cdc-ec91-43a9-aa70-49e704356197" />
+
+
+
